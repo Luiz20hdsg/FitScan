@@ -5,6 +5,8 @@ declare module 'react-native-config' {
     ONESIGNAL_APP_ID?: string;
     APP_VERSION?: string;
     APP_ENV?: string;
+    BYPASS_EMAIL?: string;
+    BYPASS_PASSWORD?: string;
   }
 
   export const Config: NativeConfig;

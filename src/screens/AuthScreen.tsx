@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,16 +17,29 @@ import { RootStackParamList } from '../types';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../theme';
 import { GradientButton } from '../components/Buttons';
 import { useUser } from '../context/UserContext';
+import { BYPASS_EMAIL, BYPASS_PASSWORD } from '../config';
 
 type AuthScreenProps = NativeStackScreenProps<RootStackParamList, 'Auth'>;
 
 const AuthScreen = ({ navigation }: AuthScreenProps) => {
-  const { login } = useUser();
+  const { login, hasCompletedOnboarding } = useUser();
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(BYPASS_EMAIL);
+  const [password, setPassword] = useState(BYPASS_PASSWORD);
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Bypass automático: se email e senha estão pré-preenchidos via .env, faz login direto
+  useEffect(() => {
+    if (BYPASS_EMAIL && BYPASS_PASSWORD) {
+      setLoading(true);
+      const timer = setTimeout(() => {
+        login(BYPASS_EMAIL);
+        navigation.replace(hasCompletedOnboarding ? 'MainTabs' : 'Onboarding');
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {

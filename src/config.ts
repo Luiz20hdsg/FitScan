@@ -26,3 +26,7 @@ export const ONESIGNAL_APP_ID = Config.ONESIGNAL_APP_ID || '';
 export const APP_VERSION = Config.APP_VERSION || '1.0.0';
 export const APP_ENV = Config.APP_ENV || 'development';
 export const IS_PRODUCTION = APP_ENV === 'production';
+
+// Bypass de login (apenas para desenvolvimento)
+export const BYPASS_EMAIL = IS_PRODUCTION ? '' : (Config.BYPASS_EMAIL || '');
+export const BYPASS_PASSWORD = IS_PRODUCTION ? '' : (Config.BYPASS_PASSWORD || '');
