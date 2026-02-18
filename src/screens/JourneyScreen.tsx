@@ -1,19 +1,29 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Colors, Gradients, FontSize, FontWeight, Spacing, BorderRadius, Shadow } from '../theme';
 import { Card } from '../components/Card';
-
-const FEATURES = [
-  { icon: 'images-outline', title: 'Fotos de Evolução', desc: 'Compare antes e depois' },
-  { icon: 'stats-chart-outline', title: 'Gráficos de Progresso', desc: 'Peso, gordura e macros' },
-  { icon: 'trophy-outline', title: 'Conquistas', desc: 'Marcos da sua jornada' },
-];
+import { useUser } from '../context/UserContext';
 
 const JourneyScreen = () => {
+  const { mealHistory, workoutHistory, analysisResult, userData } = useUser();
+
+  // Calcular estatísticas
+  const today = new Date().toDateString();
+  const todayMeals = mealHistory.filter(m => new Date(m.date).toDateString() === today);
+  const todayCalories = todayMeals.reduce((sum, m) => sum + m.calories, 0);
+  const totalMeals = mealHistory.length;
+  const totalWorkouts = workoutHistory.length;
+
+  // Dias ativos (dias únicos com atividade)
+  const activeDays = new Set([
+    ...mealHistory.map(m => new Date(m.date).toDateString()),
+    ...workoutHistory.map(w => new Date(w.date).toDateString()),
+  ]).size;
+
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <LinearGradient
         colors={[...Gradients.primary]}
         start={{ x: 0, y: 0 }}
@@ -27,36 +37,97 @@ const JourneyScreen = () => {
       </LinearGradient>
 
       <View style={styles.content}>
-        <LinearGradient
-          colors={[...Gradients.primary]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.comingSoonBadge}>
-          <Icon name="time-outline" size={14} color={Colors.textOnGradient} />
-          <Text style={styles.comingSoonText}>Em breve</Text>
-        </LinearGradient>
+        {/* Stats Grid */}
+        <View style={styles.statsGrid}>
+          <Card style={styles.statCard}>
+            <Icon name="flame-outline" size={24} color={Colors.warning} />
+            <Text style={styles.statValue}>{todayCalories}</Text>
+            <Text style={styles.statLabel}>kcal hoje</Text>
+          </Card>
+          <Card style={styles.statCard}>
+            <Icon name="restaurant-outline" size={24} color={Colors.protein} />
+            <Text style={styles.statValue}>{totalMeals}</Text>
+            <Text style={styles.statLabel}>refeições</Text>
+          </Card>
+          <Card style={styles.statCard}>
+            <Icon name="barbell-outline" size={24} color={Colors.accent} />
+            <Text style={styles.statValue}>{totalWorkouts}</Text>
+            <Text style={styles.statLabel}>treinos</Text>
+          </Card>
+          <Card style={styles.statCard}>
+            <Icon name="calendar-outline" size={24} color={Colors.success} />
+            <Text style={styles.statValue}>{activeDays}</Text>
+            <Text style={styles.statLabel}>dias ativos</Text>
+          </Card>
+        </View>
 
-        <Text style={styles.description}>
-          Estamos construindo ferramentas incríveis para você visualizar toda a sua evolução.
-        </Text>
-
-        {FEATURES.map((feature, index) => (
-          <Card key={index} style={styles.featureCard}>
-            <View style={styles.featureRow}>
-              <LinearGradient
-                colors={[...Gradients.accent]}
-                style={styles.featureIconWrapper}>
-                <Icon name={feature.icon} size={22} color={Colors.textOnGradient} />
-              </LinearGradient>
-              <View style={styles.featureText}>
-                <Text style={styles.featureTitle}>{feature.title}</Text>
-                <Text style={styles.featureDesc}>{feature.desc}</Text>
+        {/* Body analysis summary */}
+        {analysisResult && (
+          <Card style={styles.bodyCard}>
+            <View style={styles.cardHeader}>
+              <Icon name="body-outline" size={18} color={Colors.accentLight} />
+              <Text style={styles.cardHeaderTitle}>Análise Corporal</Text>
+            </View>
+            <View style={styles.bodyStats}>
+              <View style={styles.bodyStat}>
+                <Text style={styles.bodyStatValue}>{userData.weight} kg</Text>
+                <Text style={styles.bodyStatLabel}>Peso</Text>
+              </View>
+              <View style={styles.bodyDivider} />
+              <View style={styles.bodyStat}>
+                <Text style={styles.bodyStatValue}>{analysisResult.estimated_fat_percentage}%</Text>
+                <Text style={styles.bodyStatLabel}>Gordura</Text>
+              </View>
+              <View style={styles.bodyDivider} />
+              <View style={styles.bodyStat}>
+                <Text style={styles.bodyStatValue}>{analysisResult.estimated_biotype}</Text>
+                <Text style={styles.bodyStatLabel}>Biotipo</Text>
               </View>
             </View>
           </Card>
-        ))}
+        )}
+
+        {/* Recent Workouts */}
+        {workoutHistory.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.cardHeader}>
+              <Icon name="time-outline" size={18} color={Colors.accentLight} />
+              <Text style={styles.cardHeaderTitle}>Últimos Treinos</Text>
+            </View>
+            {workoutHistory.slice(0, 5).map((workout, index) => (
+              <Card key={workout.id} style={styles.historyCard}>
+                <View style={styles.historyRow}>
+                  <LinearGradient
+                    colors={[...Gradients.primary]}
+                    style={styles.historyIcon}>
+                    <Icon name="barbell" size={16} color={Colors.textOnGradient} />
+                  </LinearGradient>
+                  <View style={styles.historyInfo}>
+                    <Text style={styles.historyTitle}>{workout.title}</Text>
+                    <Text style={styles.historyDate}>
+                      {new Date(workout.date).toLocaleDateString('pt-BR')}
+                    </Text>
+                  </View>
+                </View>
+              </Card>
+            ))}
+          </View>
+        )}
+
+        {/* Empty state */}
+        {totalMeals === 0 && totalWorkouts === 0 && (
+          <Card gradient style={styles.emptyCard}>
+            <Icon name="sparkles-outline" size={40} color={Colors.accentLight} />
+            <Text style={styles.emptyTitle}>Comece sua jornada!</Text>
+            <Text style={styles.emptyText}>
+              Escaneie refeições e gere treinos para acompanhar seu progresso aqui.
+            </Text>
+          </Card>
+        )}
       </View>
-    </View>
+
+      <View style={styles.bottomSpacer} />
+    </ScrollView>
   );
 };
 
@@ -80,33 +151,71 @@ const styles = StyleSheet.create({
     textAlign: 'center', maxWidth: '85%',
   },
   content: {
-    padding: Spacing.xl, alignItems: 'center', marginTop: -Spacing.md,
+    padding: Spacing.xl, marginTop: -Spacing.md,
   },
-  comingSoonBadge: {
-    paddingHorizontal: Spacing['2xl'], paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full, marginBottom: Spacing.xl,
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-    ...Shadow.lg,
+  statsGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, marginBottom: Spacing.lg,
   },
-  comingSoonText: {
-    color: Colors.textOnGradient, fontSize: FontSize.sm, fontWeight: FontWeight.bold,
+  statCard: {
+    flex: 1, minWidth: '45%', alignItems: 'center',
+    paddingVertical: Spacing.xl, gap: Spacing.xs,
   },
-  description: {
-    fontSize: FontSize.md, color: Colors.textSecondary,
-    textAlign: 'center', maxWidth: '85%', lineHeight: 22, marginBottom: Spacing.xl,
+  statValue: {
+    fontSize: FontSize.xl, fontWeight: FontWeight.bold,
+    color: Colors.textPrimary,
   },
-  featureCard: { width: '100%', marginBottom: Spacing.md },
-  featureRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
-  featureIconWrapper: {
-    width: 48, height: 48, borderRadius: BorderRadius.md,
+  statLabel: {
+    fontSize: FontSize.xs, color: Colors.textMuted,
+    textTransform: 'uppercase', letterSpacing: 0.5,
+  },
+  bodyCard: { marginBottom: Spacing.lg },
+  cardHeader: {
+    flexDirection: 'row', alignItems: 'center',
+    marginBottom: Spacing.md, gap: Spacing.sm,
+  },
+  cardHeaderTitle: {
+    fontSize: FontSize.sm, fontWeight: FontWeight.semibold,
+    color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5,
+  },
+  bodyStats: {
+    flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center',
+  },
+  bodyStat: { alignItems: 'center', gap: Spacing.xs },
+  bodyStatValue: {
+    fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textPrimary,
+  },
+  bodyStatLabel: {
+    fontSize: FontSize.xs, color: Colors.textMuted, textTransform: 'uppercase',
+  },
+  bodyDivider: {
+    width: 1, height: 40, backgroundColor: Colors.border,
+  },
+  section: { marginBottom: Spacing.lg },
+  historyCard: { marginBottom: Spacing.sm },
+  historyRow: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+  },
+  historyIcon: {
+    width: 36, height: 36, borderRadius: 18,
     justifyContent: 'center', alignItems: 'center',
   },
-  featureText: { flex: 1 },
-  featureTitle: {
-    fontSize: FontSize.md, fontWeight: FontWeight.bold,
+  historyInfo: { flex: 1 },
+  historyTitle: {
+    fontSize: FontSize.md, fontWeight: FontWeight.semibold,
     color: Colors.textPrimary, marginBottom: 2,
   },
-  featureDesc: { fontSize: FontSize.sm, color: Colors.textMuted },
+  historyDate: { fontSize: FontSize.sm, color: Colors.textMuted },
+  emptyCard: {
+    alignItems: 'center', paddingVertical: Spacing['4xl'], gap: Spacing.md,
+  },
+  emptyTitle: {
+    fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.textPrimary,
+  },
+  emptyText: {
+    fontSize: FontSize.md, color: Colors.textSecondary,
+    textAlign: 'center', lineHeight: 22,
+  },
+  bottomSpacer: { height: Spacing['3xl'] },
 });
 
 export default JourneyScreen;

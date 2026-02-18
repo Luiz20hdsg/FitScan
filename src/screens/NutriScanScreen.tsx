@@ -15,8 +15,10 @@ import { Card } from '../components/Card';
 import { GradientButton, OutlineButton } from '../components/Buttons';
 import { MealAnalysisResult } from '../types';
 import { API_URL } from '../config';
+import { useUser } from '../context/UserContext';
 
 const NutriScanScreen = () => {
+  const { addMealToHistory } = useUser();
   const [mealImage, setMealImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<MealAnalysisResult | null>(null);
@@ -68,6 +70,14 @@ const NutriScanScreen = () => {
 
       const json: MealAnalysisResult = await response.json();
       setResult(json);
+
+      // Salvar no histórico
+      addMealToHistory({
+        id: Date.now().toString(),
+        date: new Date().toISOString(),
+        calories: json.total_calories,
+        imageUri: mealImage || undefined,
+      });
     } catch (error: any) {
       console.error('Erro na análise de refeição:', error);
       Alert.alert('Erro na Conexão', error.message || 'Não foi possível conectar ao servidor.');

@@ -2,12 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
 import { Colors, Gradients, FontSize, FontWeight, Spacing, BorderRadius, Shadow } from '../theme';
 import { Card } from '../components/Card';
 import { useUser } from '../context/UserContext';
 
 const DashboardScreen = () => {
-  const { analysisResult, userData } = useUser();
+  const { analysisResult, userData, mealHistory } = useUser();
+  const navigation = useNavigation<any>();
 
   if (!analysisResult) {
     return (
@@ -77,7 +79,10 @@ const DashboardScreen = () => {
         ) : null}
 
         <View style={styles.actionsRow}>
-          <TouchableOpacity activeOpacity={0.8} style={styles.actionWrapper}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.actionWrapper}
+            onPress={() => navigation.navigate('NutriScan')}>
             <LinearGradient
               colors={[...Gradients.primary]}
               start={{ x: 0, y: 0 }}
@@ -87,7 +92,10 @@ const DashboardScreen = () => {
               <Text style={styles.actionText}>{'Escanear\nRefeição'}</Text>
             </LinearGradient>
           </TouchableOpacity>
-          <TouchableOpacity activeOpacity={0.8} style={styles.actionWrapper}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.actionWrapper}
+            onPress={() => navigation.navigate('Coach')}>
             <LinearGradient
               colors={[...Gradients.accent]}
               start={{ x: 0, y: 0 }}
@@ -98,6 +106,31 @@ const DashboardScreen = () => {
             </LinearGradient>
           </TouchableOpacity>
         </View>
+
+        {/* Resumo do dia */}
+        {mealHistory.length > 0 && (
+          <Card style={styles.todaySummaryCard}>
+            <View style={styles.cardHeader}>
+              <Icon name="today-outline" size={18} color={Colors.accentLight} />
+              <Text style={styles.cardHeaderTitle}>Hoje</Text>
+            </View>
+            <View style={styles.todayStats}>
+              <View style={styles.todayStat}>
+                <Text style={styles.todayStatValue}>
+                  {mealHistory.filter(m => {
+                    const today = new Date().toDateString();
+                    return new Date(m.date).toDateString() === today;
+                  }).reduce((sum, m) => sum + m.calories, 0)}
+                </Text>
+                <Text style={styles.todayStatLabel}>kcal hoje</Text>
+              </View>
+              <View style={styles.todayStat}>
+                <Text style={styles.todayStatValue}>{mealHistory.length}</Text>
+                <Text style={styles.todayStatLabel}>refeições</Text>
+              </View>
+            </View>
+          </Card>
+        )}
       </View>
 
       <View style={styles.bottomSpacer} />
@@ -176,7 +209,7 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   dataLabel: { fontSize: FontSize.xs, color: Colors.textMuted, textTransform: 'uppercase' },
-  actionsRow: { flexDirection: 'row', gap: Spacing.md },
+  actionsRow: { flexDirection: 'row', gap: Spacing.md, marginBottom: Spacing.md },
   actionWrapper: { flex: 1, ...Shadow.lg },
   actionCard: {
     padding: Spacing.xl, borderRadius: BorderRadius.lg,
@@ -186,6 +219,14 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm, fontWeight: FontWeight.bold,
     color: Colors.textOnGradient, textAlign: 'center', lineHeight: 18,
   },
+  todaySummaryCard: { marginBottom: Spacing.md },
+  todayStats: { flexDirection: 'row', justifyContent: 'space-around' },
+  todayStat: { alignItems: 'center', gap: Spacing.xs },
+  todayStatValue: {
+    fontSize: FontSize['2xl'], fontWeight: FontWeight.bold,
+    color: Colors.textPrimary,
+  },
+  todayStatLabel: { fontSize: FontSize.xs, color: Colors.textMuted, textTransform: 'uppercase' },
   bottomSpacer: { height: Spacing['3xl'] },
 });
 

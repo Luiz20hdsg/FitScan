@@ -8,302 +8,370 @@ O FitScan é um aplicativo inovador que atua como um "Personal Trainer e Nutrici
 
 **Proposta de Valor:** A maioria dos apps de fitness exige entrada manual de dados (ex: "digitar arroz, 100g") e oferece treinos genéricos. O FitScan elimina esse atrito: o usuário tira fotos, e a IA faz o trabalho pesado de cálculo e planejamento, criando uma ponte personalizada entre o que o usuário come e como ele treina.
 
+**Modelo de Negócio:** App pago nas lojas (App Store / Google Play). O preço de download cobre acesso completo a todas as funcionalidades, sem anúncios ou paywalls internas.
+
 ## 2. Arquitetura Geral
 
 O FitScan é uma aplicação full-stack composta por:
 
-*   **Frontend (Mobile App):** Desenvolvido em React Native 0.84.0 com TypeScript, para iOS e Android (sem Expo, usando React Native Community CLI). Responsável pela interface do usuário, coleta de dados (incluindo fotos) e comunicação com o backend.
-*   **Backend (API):** Desenvolvido em Python com FastAPI. Atua como o "cérebro" do aplicativo, recebendo as requisições do frontend, processando-as (atualmente com simulações de IA) e retornando as análises e planos.
-*   **Inteligência Artificial (IA):** Atualmente simulada no backend. A visão final prevê o uso de modelos de Visão Computacional (para análise de imagens) e um LLM (Large Language Model) como o Gemini 1.5 Pro para análise contextual e geração de feedback.
-*   **Banco de Dados (Futuro):** O plano inclui PostgreSQL para dados relacionais (usuários, histórico) e um Banco de Dados Vetorial (Pinecone/Milvus) para memória contextual da IA.
+*   **Frontend (Mobile App):** React Native 0.84.0 com TypeScript (Community CLI, sem Expo). Interface moderna com design system inspirado em Jony Ive, gradientes indigo→cyan.
+*   **Backend (API):** Python com FastAPI. Integração real com OpenAI Vision API (GPT-4o-mini) para análise de imagens e geração de treinos.
+*   **Persistência Local:** AsyncStorage para dados do usuário, histórico de refeições e treinos.
+*   **Notificações:** OneSignal SDK para push notifications, engajamento e lembretes.
+*   **Configuração:** react-native-config para variáveis de ambiente (.env) em ambas as plataformas.
 
-## 3. Frontend (React Native)
+## 3. Tecnologias Utilizadas
 
-### 3.1. Tecnologias Utilizadas
+### Frontend
+| Tecnologia | Versão | Uso |
+|---|---|---|
+| React Native | 0.84.0 | Framework mobile (Community CLI) |
+| TypeScript | 5.x | Tipagem estática |
+| React Navigation | 7.x | Navegação (native-stack + bottom-tabs) |
+| react-native-linear-gradient | - | Gradientes na UI |
+| react-native-vector-icons | - | Ícones Ionicons |
+| react-native-image-picker | - | Câmera e galeria |
+| react-native-config | - | Variáveis de ambiente (.env) |
+| @react-native-async-storage/async-storage | - | Persistência local |
+| react-native-onesignal | 5.x | Push notifications |
 
-*   **React Native 0.84.0:** Framework para desenvolvimento de aplicativos móveis multiplataforma (sem Expo, Community CLI).
-*   **TypeScript:** Linguagem de programação que adiciona tipagem estática ao JavaScript.
-*   **React Navigation:** Biblioteca para gerenciamento de navegação entre telas e abas (`@react-navigation/native`, `@react-navigation/native-stack`, `@react-navigation/bottom-tabs`).
-*   **react-native-screens:** Otimização de performance para navegação nativa.
-*   **react-native-safe-area-context:** Gerenciamento de áreas seguras (notch, barra de status).
-*   **react-native-image-picker:** Biblioteca para acesso à câmera e galeria de imagens do dispositivo.
-*   **Context API (React):** Gerenciamento de estado global da aplicação (dados do usuário e resultado da análise).
+### Backend
+| Tecnologia | Uso |
+|---|---|
+| Python 3.10+ | Linguagem principal |
+| FastAPI 0.127.0 | Framework web |
+| OpenAI SDK 1.x | GPT-4o-mini para Vision e Text |
+| Uvicorn | Servidor ASGI |
+| python-dotenv | Variáveis de ambiente |
 
-### 3.2. Estrutura de Pastas
+## 4. Estrutura de Pastas
 
 ```
 FitScan/
-├── App.tsx                         # Componente raiz: SafeAreaProvider + UserProvider + NavigationContainer
+├── App.tsx                          # Root: Loading → Auth flow → MainTabs
+├── .env                             # Variáveis de ambiente (não commitado)
+├── .env.example                     # Template de variáveis
 ├── src/
-│   ├── config.ts                   # Configuração centralizada (API_URL)
+│   ├── config.ts                    # Config centralizada via react-native-config
 │   ├── types/
-│   │   └── index.ts                # Tipos TypeScript compartilhados (AnalysisResult, WorkoutPlanResult, ParamLists)
+│   │   ├── index.ts                 # Tipos compartilhados
+│   │   └── react-native-config.d.ts # Type declarations
 │   ├── context/
-│   │   └── UserContext.tsx         # Context API para estado global (userData, analysisResult)
+│   │   └── UserContext.tsx          # Estado global + AsyncStorage persistence
+│   ├── services/
+│   │   └── NotificationService.ts   # OneSignal integration
+│   ├── theme/
+│   │   └── index.ts                 # Design system tokens
+│   ├── components/
+│   │   ├── Buttons.tsx              # GradientButton, OutlineButton
+│   │   └── Card.tsx                 # Card component
 │   ├── navigation/
-│   │   └── MainTabs.tsx            # BottomTabNavigator com 5 abas
+│   │   └── MainTabs.tsx             # BottomTabNavigator (5 abas)
 │   └── screens/
-│       ├── OnboardingScreen.tsx    # Tela de primeiro acesso e coleta de dados iniciais
-│       ├── DashboardScreen.tsx     # Tela principal com o diagnóstico inicial
-│       ├── NutriScanScreen.tsx     # Tela para análise de refeições (com UI de resultado inline)
-│       ├── CoachScreen.tsx         # Tela para geração de planos de treino (com UI de resultado inline)
-│       ├── JourneyScreen.tsx       # Tela para histórico e evolução (placeholder)
-│       └── ProfileScreen.tsx       # Tela de perfil com dados do usuário
+│       ├── WelcomeScreen.tsx        # Tela de boas-vindas com logo
+│       ├── AuthScreen.tsx           # Login / Cadastro / Modo convidado
+│       ├── OnboardingScreen.tsx     # Coleta de dados + foto corporal
+│       ├── DashboardScreen.tsx      # Dashboard com diagnóstico e resumo do dia
+│       ├── NutriScanScreen.tsx      # Scan de refeição com IA
+│       ├── CoachScreen.tsx          # Geração de treino com IA
+│       ├── JourneyScreen.tsx        # Histórico de atividades
+│       └── ProfileScreen.tsx        # Perfil + ações + info do app
 ├── backend/
-│   ├── main.py                     # Aplicação FastAPI principal
-│   └── requirements.txt           # Dependências Python
-├── android/                        # Projeto nativo Android
-├── ios/                            # Projeto nativo iOS
-├── package.json                    # Dependências Node.js
-└── tsconfig.json                   # Configuração TypeScript
+│   ├── main.py                      # API FastAPI + OpenAI Vision
+│   ├── .env                         # Credenciais backend (não commitado)
+│   ├── .env.example                 # Template backend
+│   └── requirements.txt            # Dependências Python
+├── android/                         # Projeto nativo Android
+├── ios/                             # Projeto nativo iOS
+├── scripts/
+│   └── generate-icon.js            # Gerador de ícone do app
+└── package.json
 ```
 
-### 3.3. Gerenciamento de Estado
-
-O app utiliza **React Context API** para gerenciar estado global, evitando prop drilling e perda de dados entre telas.
-
-**`src/context/UserContext.tsx`** fornece:
-
-| Estado                    | Tipo                    | Descrição                                               |
-|---------------------------|-------------------------|---------------------------------------------------------|
-| `userData`                | `UserData`              | Idade, altura, peso e URI da foto corporal do usuário   |
-| `analysisResult`          | `AnalysisResult \| null` | Resultado da análise corporal retornado pelo backend     |
-| `hasCompletedOnboarding`  | `boolean`               | Flag indicando se o onboarding foi concluído            |
-
-**Hook de acesso:** `useUser()` — disponível em qualquer componente dentro do `<UserProvider>`.
-
-### 3.4. Tipos Compartilhados (`src/types/index.ts`)
-
-| Tipo                   | Descrição                                                          |
-|------------------------|--------------------------------------------------------------------|
-| `AnalysisResult`       | Resultado da análise corporal (biotipo, % gordura, meta, feedback) |
-| `MealAnalysisResult`   | Resultado da análise nutricional (calorias, macros, feedback)      |
-| `WorkoutExercise`      | Exercício individual (nome, séries, reps/duração, dicas)           |
-| `WorkoutPlanResult`    | Plano de treino completo (título, foco, exercícios, feedback)      |
-| `RootStackParamList`   | Tipagem da navegação Stack (Onboarding → MainTabs)                 |
-| `MainTabParamList`     | Tipagem das abas (Hoje, NutriScan, Coach, Jornada, Perfil)        |
-
-### 3.5. Configuração Centralizada (`src/config.ts`)
-
-A URL da API é definida uma única vez:
-
-```typescript
-export const API_URL = Platform.OS === 'ios'
-  ? 'http://localhost:8000'
-  : 'http://10.0.2.2:8000';
-```
-
-*   **iOS:** Usa `localhost` pois o simulador compartilha a rede do host.
-*   **Android:** Usa `10.0.2.2` que é o alias para o host no emulador Android.
-
-### 3.6. Fluxo de Navegação
+## 5. Fluxo de Navegação
 
 ```
-App.tsx
-├── Stack.Navigator
-│   ├── OnboardingScreen (tela inicial)
-│   │   └── [Após análise] → navigation.reset → MainTabs
-│   └── MainTabs
-│       ├── Tab: "Hoje"      → DashboardScreen
-│       ├── Tab: "NutriScan" → NutriScanScreen
-│       ├── Tab: "Coach"     → CoachScreen
-│       ├── Tab: "Jornada"   → JourneyScreen
-│       └── Tab: "Perfil"    → ProfileScreen
+App.tsx (LoadingScreen enquanto restaura dados)
+├── WelcomeScreen (primeira abertura)
+│   └── AuthScreen (login / cadastro / convidado)
+│       └── OnboardingScreen (se não completou)
+│           └── MainTabs
+└── MainTabs (se já autenticado + onboarding completo)
+    ├── Tab: "Hoje"      → DashboardScreen
+    ├── Tab: "NutriScan" → NutriScanScreen
+    ├── Tab: "Coach"     → CoachScreen
+    ├── Tab: "Jornada"   → JourneyScreen
+    └── Tab: "Perfil"    → ProfileScreen
 ```
 
-**Detalhes importantes:**
-*   Após o onboarding, usa `navigation.reset()` em vez de `navigate()` para impedir o usuário de voltar à tela de onboarding com o botão "voltar".
-*   Os dados da análise são armazenados no `UserContext`, não passados como parâmetros de rota, evitando crashes quando o Dashboard é acessado sem dados.
+**Lógica de rota inicial (App.tsx):**
+- Se `isLoading` → mostra LoadingScreen (splash com ActivityIndicator)
+- Se não autenticado → Welcome
+- Se autenticado mas não fez onboarding → Onboarding
+- Se autenticado + onboarding completo → MainTabs
 
-### 3.7. Telas Implementadas
+## 6. Gerenciamento de Estado (UserContext)
 
-Todas as telas seguem um padrão de estilo escuro (`#121212`) com acentos em verde (`#1DB954`).
+### 6.1. Dados Persistidos com AsyncStorage
 
-#### `OnboardingScreen.tsx`
-*   **Funcionalidade:** Coleta idade, altura, peso e uma foto corporal do usuário.
-*   **Validações Frontend:**
-    *   Idade: 10–120 anos
-    *   Altura: 100–250 cm
-    *   Peso: 30–300 kg
-    *   Foto: obrigatória
-    *   Campos numéricos com `maxLength={3}`
-*   **Integração:** `POST /analyze-body/` (multipart/form-data).
-*   **Após sucesso:** Salva dados no `UserContext` e faz `navigation.reset` para `MainTabs`.
-*   **UI:** Loading com texto descritivo, botão desabilitado visualmente durante carregamento.
+| Chave | Tipo | Descrição |
+|---|---|---|
+| `@fitscan_user_data` | `UserData` | Idade, altura, peso, URI da foto |
+| `@fitscan_auth_state` | `AuthState` | Email, isAuthenticated, isGuest |
+| `@fitscan_analysis_result` | `AnalysisResult` | Resultado da análise corporal |
+| `@fitscan_onboarding_completed` | `boolean` | Flag de onboarding |
+| `@fitscan_meal_history` | `MealHistoryEntry[]` | Histórico de refeições |
+| `@fitscan_workout_history` | `WorkoutHistoryEntry[]` | Histórico de treinos |
 
-#### `DashboardScreen.tsx` (Aba "Hoje")
-*   **Funcionalidade:** Exibe o diagnóstico inicial do usuário.
-*   **Fallback seguro:** Se `analysisResult` for `null`, exibe tela de boas-vindas em vez de crashar.
-*   **UI:** Cards com emojis e hierarquia visual: meta (verde destaque), biotipo e gordura (lado a lado), feedback, dados pessoais, botões de ação.
+### 6.2. Context API
 
-#### `NutriScanScreen.tsx` (Aba "NutriScan")
-*   **Funcionalidade:** Selecionar/fotografar refeição e obter análise nutricional.
-*   **Integração:** `POST /analyze-meal/` (multipart/form-data).
-*   **UI do resultado:** Renderizado inline (não em Alert), com:
-    *   Card de calorias em destaque (número grande)
-    *   Macros em cards coloridos (Proteína=vermelho, Carbos=verde, Gordura=amarelo)
-    *   Card de feedback da IA
-    *   Botão "Nova Análise" para limpar e refazer
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `userData` / `setUserData` | `UserData` | Dados do usuário |
+| `analysisResult` / `setAnalysisResult` | `AnalysisResult \| null` | Análise corporal |
+| `hasCompletedOnboarding` / `setHasCompletedOnboarding` | `boolean` | Flag onboarding |
+| `auth` / `setAuth` | `AuthState` | Estado de autenticação |
+| `loginAsGuest()` | `() => void` | Login como convidado |
+| `login(email)` | `(email: string) => void` | Login com email |
+| `logout()` | `() => void` | Logout + limpa AsyncStorage |
+| `isLoading` | `boolean` | True enquanto restaura dados |
+| `mealHistory` / `addMealToHistory` | `MealHistoryEntry[]` | Histórico de refeições |
+| `workoutHistory` / `addWorkoutToHistory` | `WorkoutHistoryEntry[]` | Histórico de treinos |
 
-#### `CoachScreen.tsx` (Aba "Coach")
-*   **Funcionalidade:** Informar local de treino e limitações, receber plano personalizado.
-*   **Integração:** `POST /generate-workout/` (multipart/form-data).
-*   **UI do resultado:** Renderizado inline (não em Alert), com:
-    *   Header com título do treino e badge de foco
-    *   Exercícios numerados com chips de séries/reps
-    *   Dicas com emoji 💡
-    *   Card de observações
-    *   Botão "Gerar Novo Treino"
+### 6.3. Integração com OneSignal
 
-#### `JourneyScreen.tsx` (Aba "Jornada")
-*   **Status:** Placeholder com badge "Em breve".
-*   **Futuro:** Gráficos de progresso, histórico, fotos de evolução.
+- `login()` → chama `setExternalUserId(email)` + `setUserTags()`
+- `logout()` → chama `removeExternalUserId()`
+- Tags enviadas: `user_email`, `has_analysis`, `onboarding_completed`
 
-#### `ProfileScreen.tsx` (Aba "Perfil")
-*   **Funcionalidade:** Exibe dados do usuário e resultado da análise (lidos do `UserContext`).
-*   **UI:** Card com dados pessoais, botão "Refazer Análise Corporal", seção "Em breve".
+## 7. Telas
 
-### 3.8. Configurações Nativas (Permissões)
+### 7.1. WelcomeScreen
+- Logo animado com gradiente flash (⚡)
+- Botão "Começar Agora" → AuthScreen
+- Design hero com gradiente indigo→cyan
 
-#### Android (`android/app/src/main/AndroidManifest.xml`)
-```xml
-<uses-permission android:name="android.permission.INTERNET" />
-<uses-permission android:name="android.permission.CAMERA" />
-<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
-<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-<!-- android:requestLegacyExternalStorage="true" na tag <application> -->
+### 7.2. AuthScreen
+- Abas Login / Cadastro
+- Validação de email e senha (min 6 chars)
+- Botão "Entrar como Convidado"
+- Após auth → Onboarding (ou MainTabs se já completou)
+
+### 7.3. OnboardingScreen
+- Coleta: idade, altura, peso + foto corporal (câmera/galeria)
+- Validações: idade 10-120, altura 100-250cm, peso 30-300kg, foto obrigatória
+- `POST /analyze-body/` com multipart/form-data
+- Loading com texto descritivo
+- Após sucesso: salva no context + `navigation.reset` para MainTabs
+
+### 7.4. DashboardScreen (Aba "Hoje")
+- Diagnóstico inicial (biotipo, gordura, meta, feedback)
+- Resumo do dia: total de calorias e refeições do dia
+- Botões de ação rápida → NutriScan e Coach
+- Fallback seguro se `analysisResult === null`
+
+### 7.5. NutriScanScreen (Aba "NutriScan")
+- Seleção de foto (câmera/galeria)
+- `POST /analyze-meal/` → OpenAI Vision API
+- Resultado inline: card de calorias, macros coloridos, feedback
+- Salva automaticamente no `mealHistory`
+- Botão "Nova Análise" para limpar
+
+### 7.6. CoachScreen (Aba "Coach")
+- Formulário: local de treino + limitações
+- `POST /generate-workout/` → OpenAI GPT-4o-mini
+- Resultado inline: título, foco, exercícios numerados, dicas
+- Salva automaticamente no `workoutHistory`
+- Botão "Gerar Novo Treino"
+
+### 7.7. JourneyScreen (Aba "Jornada")
+- Stats cards: total refeições, total calorias, total treinos
+- Timeline de atividades recentes (refeições + treinos combinados)
+- Ordenação por data (mais recente primeiro)
+- Empty state com mensagem motivacional
+
+### 7.8. ProfileScreen (Aba "Perfil")
+- Avatar com inicial do email (ou ícone para convidado)
+- Card "Seus Dados" com idade, altura, peso, biotipo, gordura, meta
+- Card "Sua Atividade" com stats (refeições, calorias, treinos)
+- Ações rápidas: Avaliar na loja, Compartilhar, Suporte
+- Botão "Refazer Análise Corporal"
+- Logout / Criar conta (para convidados)
+- Versão do app (FitScan v1.0.0)
+
+## 8. Design System
+
+### 8.1. Cores
+| Token | Valor | Uso |
+|---|---|---|
+| `background` | `#0A0A0F` | Fundo principal |
+| `surface` | `#12121A` | Cards e superfícies |
+| `surfaceLight` | `#1A1A2E` | Superfícies elevadas |
+| `primary` | `#6366F1` | Indigo principal |
+| `primaryLight` | `#818CF8` | Indigo claro |
+| `accent` | `#06B6D4` | Cyan de destaque |
+| `accentLight` | `#22D3EE` | Cyan claro |
+| `success` | `#10B981` | Verde |
+| `warning` | `#F59E0B` | Âmbar |
+| `error` | `#EF4444` | Vermelho |
+
+### 8.2. Gradientes
+- **Primary:** `#6366F1` → `#818CF8` (Indigo)
+- **Accent:** `#06B6D4` → `#22D3EE` (Cyan)
+- **Hero:** `#6366F1` → `#8B5CF6` → `#06B6D4` (Indigo→Violet→Cyan)
+
+### 8.3. Componentes Reutilizáveis
+- `Card` — com borda, border-radius, opção de gradiente
+- `GradientButton` — botão com gradiente (primary/accent/hero)
+- `OutlineButton` — botão com borda e fundo transparente
+
+## 9. Backend API
+
+### 9.1. Endpoints
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| GET | `/` | Status da API |
+| GET | `/health` | Health check com info do ambiente |
+| POST | `/analyze-body/` | Análise corporal com IA |
+| POST | `/analyze-meal/` | Análise nutricional com IA |
+| POST | `/generate-workout/` | Geração de treino com IA |
+
+### 9.2. Integração OpenAI
+
+- **Modelo:** GPT-4o-mini (Vision + Text)
+- **Análise corporal:** Envia imagem base64 + dados do usuário → biotipo, % gordura, meta, feedback
+- **Análise nutricional:** Envia foto da refeição base64 → calorias, macros, tipo de refeição, feedback
+- **Geração de treino:** Texto com dados do usuário + local + limitações → plano completo
+- **Fallback:** Se `OPENAI_API_KEY` não configurada, usa simulação com cálculos de IMC e dados aleatórios
+
+### 9.3. Variáveis de Ambiente (Backend)
+
+```env
+OPENAI_API_KEY=sk-xxx          # Chave da API OpenAI
+APP_ENV=development            # development | production
+ALLOWED_ORIGINS=*              # Origens permitidas para CORS
+RATE_LIMIT_PER_MINUTE=30       # Limite de requests por minuto
 ```
 
-#### iOS (`ios/FitScan/Info.plist`)
-```xml
-<key>NSCameraUsageDescription</key>
-<string>O FitScan precisa de acesso à sua câmera para realizar a análise de composição corporal e escanear suas refeições.</string>
-<key>NSPhotoLibraryUsageDescription</key>
-<string>O FitScan precisa de acesso à sua galeria para que você possa selecionar fotos para análise corporal e de refeições.</string>
-<key>NSPhotoLibraryAddUsageDescription</key>
-<string>O FitScan precisa de acesso para salvar imagens em sua galeria, como seu histórico de progresso visual.</string>
+## 10. Notificações (OneSignal)
+
+### 10.1. Serviço (`NotificationService.ts`)
+- `initializeNotifications(appId)` — Inicializa SDK do OneSignal
+- `requestNotificationPermission()` — Solicita permissão
+- `setUserTags(tags)` — Define tags do usuário para segmentação
+- `setExternalUserId(id)` — Associa usuário com ID externo
+- `removeExternalUserId()` — Remove associação no logout
+- `trackEngagement(event)` — Rastreia eventos de engajamento
+
+### 10.2. Eventos de Engajamento
+| Evento | Quando |
+|---|---|
+| `APP_OPENED` | App inicializado |
+| `ONBOARDING_COMPLETED` | Onboarding finalizado |
+| `BODY_ANALYSIS` | Análise corporal realizada |
+| `MEAL_SCANNED` | Refeição escaneada |
+| `WORKOUT_GENERATED` | Treino gerado |
+
+## 11. Configuração de Ambiente
+
+### 11.1. Variáveis Frontend (.env)
+
+```env
+API_URL=http://localhost:8000     # URL da API backend
+OPENAI_API_KEY=sk-xxx             # Chave OpenAI (opcional no frontend)
+ONESIGNAL_APP_ID=xxx              # App ID do OneSignal
+APP_VERSION=1.0.0                 # Versão do app
+APP_ENV=development               # Ambiente
 ```
 
-## 4. Backend (FastAPI com Python)
+### 11.2. Plataformas
+- **Android:** react-native-config configurado via `dotenv.gradle` em `android/app/build.gradle`
+- **iOS:** react-native-config configurado via pod `react-native-config/Extension` no Podfile
 
-### 4.1. Tecnologias Utilizadas
+## 12. Como Executar
 
-*   **Python 3.10+:** Linguagem de programação principal.
-*   **FastAPI 0.127.0:** Framework web moderno e rápido para construir APIs.
-*   **Uvicorn:** Servidor ASGI para rodar aplicações FastAPI.
-*   **python-multipart:** Parsing de formulários `multipart/form-data` (upload de arquivos).
-*   **CORS Middleware:** Habilitado para permitir requisições do app mobile.
-
-### 4.2. Endpoints Implementados
-
-| Método | Endpoint              | Descrição                                      |
-|--------|-----------------------|------------------------------------------------|
-| GET    | `/`                   | Verifica se a API está online (retorna versão) |
-| GET    | `/health`             | Health check endpoint                          |
-| POST   | `/analyze-body/`      | Análise corporal (idade, altura, peso, imagem) |
-| POST   | `/analyze-meal/`      | Análise nutricional de refeição (imagem)       |
-| POST   | `/generate-workout/`  | Geração de plano de treino personalizado       |
-
-### 4.3. Validações do Backend
-
-| Endpoint           | Validação                                           |
-|--------------------|-----------------------------------------------------|
-| `/analyze-body/`   | Idade: 10–120, Altura: 100–250cm, Peso: 30–300kg   |
-| `/analyze-body/`   | Arquivo deve ser imagem (`content_type: image/*`)   |
-| `/analyze-meal/`   | Arquivo deve ser imagem (`content_type: image/*`)   |
-| `/generate-workout/`| Local de treino não pode ser vazio                  |
-
-Validações retornam `HTTP 422` com mensagem descritiva em `detail`.
-
-### 4.4. Detalhes dos Endpoints
-
-#### `POST /analyze-body/`
-*   **Parâmetros (Form Data):** `age` (int), `height` (int), `weight` (int), `image` (UploadFile)
-*   **Simulação de IA:** Calcula IMC e retorna biotipo, meta, % gordura e feedback baseados no resultado.
-*   **Retorno:** `{ estimated_fat_percentage, estimated_biotype, suggested_goal, feedback }`
-
-#### `POST /analyze-meal/`
-*   **Parâmetros (Form Data):** `image` (UploadFile)
-*   **Simulação de IA:** Escolhe aleatoriamente entre 4 análises nutricionais pré-definidas.
-*   **Retorno:** `{ total_calories, macros: { protein, carbs, fat }, feedback, meal_type }`
-
-#### `POST /generate-workout/`
-*   **Parâmetros (Form Data):** `training_location` (str), `limitations` (str, opcional)
-*   **Simulação de IA:** Gera plano adaptativo:
-    *   Se `limitations` contém "joelho" → adapta agachamento para Smith
-    *   Se `limitations` contém "lombar"/"costas" → adapta para Leg Press 45°
-    *   Se `training_location` contém "casa" → troca para exercícios com peso corporal
-*   **Retorno:** `{ title, focus, exercises: [{ name, sets, reps/duration, tips }], feedback }`
-
-### 4.5. Como Executar o Backend
-
+### Backend
 ```bash
-cd FitScan/backend
-
-# Criar ambiente virtual (recomendado)
+cd backend
 python3 -m venv venv
-source venv/bin/activate  # macOS/Linux
-
-# Instalar dependências
+source venv/bin/activate
 pip install -r requirements.txt
-
-# Executar
+cp .env.example .env  # Configurar OPENAI_API_KEY
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-A documentação interativa da API estará disponível em: `http://localhost:8000/docs`
-
-## 5. Como Executar o App
-
 ### iOS
 ```bash
-cd FitScan/ios
-bundle install
-bundle exec pod install
-cd ..
+cd FitScan
+npm install
+cd ios && bundle exec pod install && cd ..
+cp .env.example .env  # Configurar credenciais
 npx react-native run-ios
 ```
 
 ### Android
 ```bash
 cd FitScan
+npm install
+cp .env.example .env  # Configurar credenciais
 npx react-native run-android
 ```
 
-### Metro Bundler (se não iniciar automaticamente)
-```bash
-cd FitScan
-npx react-native start
+## 13. Modelo de Negócio
+
+### Estratégia: App Pago
+- **Modelo:** Download pago nas lojas (App Store / Google Play)
+- **Preço:** Definido pelo proprietário na App Store Connect / Google Play Console
+- **Inclui:** Acesso completo a todas as funcionalidades (análise corporal, NutriScan, Coach, Jornada)
+- **Sem anúncios:** Experiência premium limpa
+- **Sem in-app purchases:** Todas as features desbloqueadas na compra
+
+### Funcionalidades de Retenção
+- Push notifications (OneSignal) para lembretes de refeição e treino
+- Histórico de atividades persistido localmente
+- Compartilhamento do app (boca a boca)
+- Avaliação na loja (social proof)
+- Suporte via email
+
+### Custo Operacional
+- **OpenAI API:** Custo por chamada de Vision/Text (~$0.01-0.05 por análise)
+- **OneSignal:** Gratuito até 10k subscribers, depois plano pago
+- **Servidor:** VPS para hospedar FastAPI backend
+
+## 14. Configurações Nativas (Permissões)
+
+### Android (`AndroidManifest.xml`)
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.CAMERA" />
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 ```
 
-## 6. Melhorias em relação à versão anterior
+### iOS (`Info.plist`)
+```xml
+<key>NSCameraUsageDescription</key>
+<string>O FitScan precisa de acesso à sua câmera para análise corporal e escanear refeições.</string>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>O FitScan precisa de acesso à galeria para selecionar fotos para análise.</string>
+<key>NSPhotoLibraryAddUsageDescription</key>
+<string>O FitScan precisa de acesso para salvar imagens do seu progresso.</string>
+```
 
-| Aspecto                | Antes (v1)                                     | Agora (v2)                                        |
-|------------------------|-------------------------------------------------|---------------------------------------------------|
-| Criação do projeto     | Comando incorreto                               | `npx @react-native-community/cli@latest init`    |
-| React Native           | Versão antiga                                    | 0.84.0                                            |
-| Estado global          | Props via navegação (perdia ao trocar aba)       | Context API (persistente entre telas)             |
-| DashboardScreen        | Crashava sem params                              | Fallback seguro com tela de boas-vindas           |
-| Resultados NutriScan   | Alert (texto longo, péssima UX)                  | UI inline rica com cards coloridos                |
-| Resultados Coach       | Alert (texto longo, péssima UX)                  | UI inline com exercícios numerados                |
-| Navegação pós-onboarding | `navigate` (permitia voltar)                   | `navigation.reset` (impede voltar)                |
-| API_URL                | Duplicada em cada tela                           | Centralizada em `config.ts`                       |
-| Tipos TypeScript       | Dispersos e inconsistentes                       | Centralizados em `src/types/index.ts`             |
-| Backend CORS           | Não configurado                                  | CORS habilitado                                   |
-| Backend validação      | Nenhuma (valores negativos passavam)             | Validação completa com HTTP 422                   |
-| Backend health check   | Inexistente                                      | `GET /health`                                     |
-| Validação frontend     | Apenas "campos vazios"                           | Faixas válidas (idade, altura, peso)              |
-| OnboardingScreen       | Código com linhas em branco excessivas           | Código limpo e organizado                         |
-| ProfileScreen          | Placeholder sem dados                            | Exibe dados do UserContext                        |
+### Android Config
+- `compileSdk`: 36
+- `targetSdk`: 36
+- `minSdk`: 24
+- `Kotlin`: 2.1.20
+- `buildTools`: 36.0.0
 
-## 7. Próximos Passos Sugeridos
+## 15. Ícone do App
 
-*   **IA Real:** Integrar modelos de Visão Computacional (TensorFlow/PyTorch) e LLM (Gemini 1.5 Pro).
-*   **Persistência:** PostgreSQL para dados de usuários + AsyncStorage para cache local.
-*   **Autenticação:** Sistema de login/registro (Firebase Auth ou JWT).
-*   **Jornada:** Gráficos de progresso (react-native-chart-kit), fotos antes/depois.
-*   **Perfil:** Edição de dados, preferências alimentares, metas personalizadas.
-*   **Notificações:** Push notifications para lembrar de registrar refeições/treinos.
-*   **Câmera em tempo real:** Integração com câmera para NutriScan instantâneo.
-*   **Testes:** Jest + React Native Testing Library para testes unitários e de integração.
+Ícone gerado programaticamente com gradiente indigo→cyan e símbolo de raio (⚡). Gerado para todos os tamanhos:
+
+- **iOS:** 20x20 até 1024x1024 (AppIcon.appiconset)
+- **Android:** mipmap-mdpi (48), mipmap-hdpi (72), mipmap-xhdpi (96), mipmap-xxhdpi (144), mipmap-xxxhdpi (192) — ic_launcher.png e ic_launcher_round.png
+
+Script de geração: `scripts/generate-icon.js` (usa @napi-rs/canvas)

@@ -14,8 +14,10 @@ import { Card } from '../components/Card';
 import { GradientButton, OutlineButton } from '../components/Buttons';
 import { WorkoutPlanResult } from '../types';
 import { API_URL } from '../config';
+import { useUser } from '../context/UserContext';
 
 const CoachScreen = () => {
+  const { addWorkoutToHistory } = useUser();
   const [trainingLocation, setTrainingLocation] = useState('');
   const [limitations, setLimitations] = useState('');
   const [loading, setLoading] = useState(false);
@@ -47,6 +49,13 @@ const CoachScreen = () => {
 
       const json: WorkoutPlanResult = await response.json();
       setWorkoutPlan(json);
+
+      // Salvar no histórico
+      addWorkoutToHistory({
+        id: Date.now().toString(),
+        date: new Date().toISOString(),
+        title: json.title,
+      });
     } catch (error: any) {
       console.error('Erro ao gerar treino:', error);
       Alert.alert('Erro na Conexão', error.message || 'Não foi possível conectar ao servidor.');
